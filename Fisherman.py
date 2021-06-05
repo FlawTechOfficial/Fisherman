@@ -4,11 +4,12 @@ import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.to
 from dearpygui.core import *
 from dearpygui.simple import *
 import random,os
+import time
 
 #Loads Settings
 parser = configparser.ConfigParser()
 try:
-    parser.read('settings.ini')
+    parser.read('E:\Fisherman-main\settings.ini')
 except :
     print("not exist!")
 
@@ -21,6 +22,7 @@ detection_threshold = parser.getfloat('Settings','detection_threshold')
 dist_launch_time = parser.getfloat('Settings', 'launch_time')
 cast_time = parser.getint('Settings', 'cast_time')
 food_time = parser.getint('Settings', 'food_time')
+max_catch_time = parser.getint('Settings', 'max_catch_time')
 screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
 cordies = screen_area.split(',')
@@ -128,13 +130,18 @@ def do_minigame():
         if valid == "TRUE":
             fish_count += 1
             bait_counter += 1
+            t0 = time.time()
             while 1:
                 valid,location,size = Detect_Bobber()
                 if valid == "TRUE":
-                    if location[0] < size / 2:
-                        pyautogui.mouseDown()
-                    else:
+                    t1 = time.time() - t0
+                    if t1 > max_catch_time:
+                        log_warning(f"Max Catch Time Reached. Releasing Rod...",logger="Information")
                         pyautogui.mouseUp()
+                    elif location[0] > size / 2:
+                        pyautogui.mouseUp()
+                    else:
+                        pyautogui.mouseDown()
                 else:
                     if STATE != "CASTING":
                         STATE = "CASTING"
@@ -230,7 +237,7 @@ def change_bober(val):
         return cv2.imread(bobber_img[2])
     else:
         log_info(f'Please Select Game Resolution',logger="Information")
-        return cv2.imread('bobber.png')
+        return cv2.imread('E:\Fisherman-main\bobber.png')
     
         
         
@@ -369,7 +376,7 @@ def Setup():
         return
     else:
         print("Detected first run...\nChecking Files.")        
-        if os.path.exists('bobber.png'):
+        if os.path.exists('bobber.PNG'):
             print('\U0001f44d' + ' Found bobber.png')
         else:
             print('ERROR | No bobber.png found. Please obtain the bobber.png and restart.')
@@ -404,6 +411,7 @@ def save_settings(sender,data):
     p.set('Settings','launch_time',str(dist_launch_time))
     p.set('Settings','cast_time',str(cast_time))
     p.set('Settings','food_time',str(food_time))
+    p.set('Settings','max_catch_time',str(max_catch_time))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -424,6 +432,7 @@ with window("Fisherman Window",width = 600,height = 500):
     add_slider_float("Set Time Lauch Distance",min_value=0.3,max_value=1.0,default_value=dist_launch_time,callback=save_dist_launch_time, tip = "Time to determine the launch distance")
     add_slider_int("Set Cast Time",min_value=1,max_value=60,default_value=int(cast_time),callback= save_cast_time, tip = "time to determine how long without getting fish")
     add_slider_int("Set Food Time",min_value=1,max_value=60,default_value=int(food_time),callback= save_food_time, tip = "time to use food. Is minutes")
+    add_slider_int("Max Catch Time",min_value=1,max_value=60,default_value=int(max_catch_time),callback= max_catch_time, tip = "Maxmimum time before releasing the rod. Useful if fish can't be caught.")
     add_listbox("Set Game Resolution", items=resolutions, default_value=int(resolution),callback=save_resolution)
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
